@@ -2,8 +2,157 @@
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
+ * 
+ * Version: Aug. 4, 2020
+ * 
  */
 #include "ssh_util.h"
+#include <fstream>
+
+int sftp_transfer_local_to_Server(ssh_session session) {
+
+  sftp_session sftp;
+  int access_type = O_WRONLY | O_CREAT | O_TRUNC;
+  sftp_file file;
+  const char *helloworld = "Hello, World!\n";
+  int length = strlen(helloworld);
+  int rc, nwritten;
+ 
+  
+  
+  sftp = sftp_new(session);
+  if (sftp == NULL)
+  {
+    fprintf(stderr, "Error allocating SFTP session: %s\n",
+            ssh_get_error(session));
+    return SSH_ERROR;
+  }
+ 
+  rc = sftp_init(sftp);
+  if (rc != SSH_OK)
+  {
+    fprintf(stderr, "Error initializing SFTP session: code %d.\n",
+            sftp_get_error(sftp));
+    sftp_free(sftp);
+    return rc;
+  }
+ 
+  //Source file: Specify local source file location (local path)
+  std::ifstream fin("/home/jess/examples.desktop", std::ios::binary);
+  
+  //Destination file:Specify the server folder location where to put the file
+  //Tested OK 8/4/2020
+  file = sftp_open(sftp, "/home/jess/CI/examples.desktop",
+                   access_type, S_IRWXU);
+  if (file == NULL)
+  {
+    fprintf(stderr, "Can't open file for writing: %s\n",
+            ssh_get_error(session));
+    return SSH_ERROR;
+  }
+  
+   while (fin)
+    {
+        constexpr size_t max_xfer_buf_size = 10240;
+        char buffer[max_xfer_buf_size];
+            fin.read(buffer, sizeof(buffer));
+            if (fin.gcount() > 0)
+            {
+                ssize_t nwritten = sftp_write(file, buffer, fin.gcount());
+                if (nwritten != fin.gcount())
+                {
+                    fprintf(stderr, "Can't write data to file: %s\n", ssh_get_error(session));
+                    sftp_close(file);
+                    return 1;
+                }
+            }
+        }
+  
+  
+  rc = sftp_close(file);
+  if (rc != SSH_OK)
+  {
+    fprintf(stderr, "Can't close the written file: %s\n",
+            ssh_get_error(session));
+    return rc;
+  }
+  
+  sftp_free(sftp);
+  return SSH_OK;
+}
+
+/*
+ * Creates a directory to target server,
+ * then transmit a new file called helloworld.
+ */ 
+int sftp_helloworld(ssh_session session)
+{
+  sftp_session sftp;
+  int access_type = O_WRONLY | O_CREAT | O_TRUNC;
+  sftp_file file;
+  const char *helloworld = "Hello, World!\n";
+  int length = strlen(helloworld);
+  int rc, nwritten;
+ 
+  sftp = sftp_new(session);
+  if (sftp == NULL)
+  {
+    fprintf(stderr, "Error allocating SFTP session: %s\n",
+            ssh_get_error(session));
+    return SSH_ERROR;
+  }
+ 
+  rc = sftp_init(sftp);
+  if (rc != SSH_OK)
+  {
+    fprintf(stderr, "Error initializing SFTP session: code %d.\n",
+            sftp_get_error(sftp));
+    sftp_free(sftp);
+    return rc;
+  }
+ 
+  //Create directory
+  rc = sftp_mkdir(sftp, "helloworld", S_IRWXU);
+  if (rc != SSH_OK)
+  {
+    if (sftp_get_error(sftp) != SSH_FX_FILE_ALREADY_EXISTS)
+    {
+      fprintf(stderr, "Can't create directory: %s\n",
+              ssh_get_error(session));
+        return rc;
+    }
+  }
+ 
+  //transfer file
+  file = sftp_open(sftp, "helloworld/helloworld.txt",
+                   access_type, S_IRWXU);
+  if (file == NULL)
+  {
+    fprintf(stderr, "Can't open file for writing: %s\n",
+            ssh_get_error(session));
+    return SSH_ERROR;
+  }
+ 
+  nwritten = sftp_write(file, helloworld, length);
+  if (nwritten != length)
+  {
+    fprintf(stderr, "Can't write data to file: %s\n",
+            ssh_get_error(session));
+    sftp_close(file);
+    return SSH_ERROR;
+  }
+ 
+  rc = sftp_close(file);
+  if (rc != SSH_OK)
+  {
+    fprintf(stderr, "Can't close the written file: %s\n",
+            ssh_get_error(session));
+    return rc;
+  }
+  
+  sftp_free(sftp);
+  return SSH_OK;
+}
 
 /*
  * use this auto once a public key is paired (loaded to the server).

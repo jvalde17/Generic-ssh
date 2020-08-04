@@ -5,7 +5,7 @@
  * Author: Jess Valdez
  *
  * Created on July 20, 2020, 5:06 PM
- * Version: July 22
+ * Version: Aug 4, 2020
  * 
  * Note: Trial ssh application using libssh from lissh.org
  * Many functions were taken from https://api.libssh.org/stable/libssh_tutor_guided_tour.html.
@@ -22,6 +22,8 @@
 #include <string.h>
 
 #include "ssh_util.h"
+#include <fstream>
+#include <ios>
 
 #define PASSWORD_AUTHENTICATION 0
 #define PUBKEY_AUTHENTICATION 1
@@ -33,7 +35,7 @@ using namespace std;
  */
 int main(int argc, char** argv) {
 
-     ssh_session my_ssh_session;
+  ssh_session my_ssh_session;
   int verbosity = SSH_LOG_PROTOCOL;
   int port = 22; 
   int rc;
@@ -43,7 +45,7 @@ int main(int argc, char** argv) {
   if (my_ssh_session == NULL)
     exit(-1);
  
-  ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, "10.0.0.141");
+  ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, "10.0.0.17"); //17 Ubuntu HP15, 129 for macbook
   ssh_options_set(my_ssh_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
   ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &port);
  
@@ -79,9 +81,14 @@ int main(int argc, char** argv) {
         ssh_free(my_ssh_session);
         exit(-1);
     }
+   cout << " Pub key authentication complete.." << endl;   
   } 
   
-
+  //transfer file
+  //sftp_helloworld(my_ssh_session);
+  //std::ifstream fin("/home/jess/examples.desktop", std::ios::binary);
+  //std::ifstream fin("/home/jess/examples.desktop", std::ifstream::in);
+  sftp_transfer_local_to_Server(my_ssh_session);
   
   show_remote_files(my_ssh_session);
   
